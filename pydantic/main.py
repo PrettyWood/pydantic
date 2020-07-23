@@ -720,7 +720,7 @@ class BaseModel(Representation, metaclass=ModelMetaclass):
             ):
                 continue
             if by_alias and field_key in self.__fields__:
-                dict_key = self.__fields__[field_key].alias
+                dict_key = self.__fields__[field_key].dump_alias
             else:
                 dict_key = field_key
             if to_dict or value_include or value_exclude:

@@ -188,10 +188,12 @@ def test_alias_child_precedence():
         y: int
 
         class Config:
-            fields = {'y': 'y2', 'x': 'x2'}
+            fields = {'y': 'y2', 'x': {'alias': 'x2', 'dump_alias': 'dumpx', 'load_alias': 'loadx'}}
 
     assert Child.__fields__['y'].alias == 'y2'
     assert Child.__fields__['x'].alias == 'x2'
+    assert Child.__fields__['x'].dump_alias == 'dumpx'
+    assert Child.__fields__['x'].load_alias == 'loadx'
 
 
 def test_alias_generator_parent():

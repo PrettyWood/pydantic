@@ -70,6 +70,8 @@ class FieldInfo(Representation):
         'default',
         'default_factory',
         'alias',
+        '_dump_alias',
+        '_load_alias',
         'alias_priority',
         'title',
         'description',
@@ -92,6 +94,8 @@ class FieldInfo(Representation):
         self.default_factory = kwargs.pop('default_factory', None)
         self.alias = kwargs.pop('alias', None)
         self.alias_priority = kwargs.pop('alias_priority', 2 if self.alias else None)
+        self._dump_alias = kwargs.pop('dump_alias', None)
+        self._load_alias = kwargs.pop('load_alias', None)
         self.title = kwargs.pop('title', None)
         self.description = kwargs.pop('description', None)
         self.const = kwargs.pop('const', None)
@@ -107,12 +111,30 @@ class FieldInfo(Representation):
         self.regex = kwargs.pop('regex', None)
         self.extra = kwargs
 
+    @property
+    def dump_alias(self) -> str:
+        return self._dump_alias or self.alias
+
+    @dump_alias.setter
+    def dump_alias(self, x: str) -> None:
+        self._dump_alias = x
+
+    @property
+    def load_alias(self) -> str:
+        return self._load_alias or self.alias
+
+    @load_alias.setter
+    def load_alias(self, x: str) -> None:
+        self._load_alias = x
+
 
 def Field(
     default: Any = Undefined,
     *,
     default_factory: Optional[NoArgAnyCallable] = None,
     alias: str = None,
+    dump_alias: str = None,
+    load_alias: str = None,
     title: str = None,
     description: str = None,
     const: bool = None,
@@ -137,6 +159,8 @@ def Field(
     :param default_factory: callable that will be called when a default value is needed for this field
       If both `default` and `default_factory` are set, an error is raised.
     :param alias: the public name of the field
+    :param dump_alias: only used for dumping (.dict() and .json()), takes precedence over alias
+    :param load_alias: only used for loading, takes precedence over alias
     :param title: can be any string, used in the schema
     :param description: can be any string, used in the schema
     :param const: this field is required and *must* take it's default value
@@ -165,6 +189,8 @@ def Field(
         default,
         default_factory=default_factory,
         alias=alias,
+        dump_alias=dump_alias,
+        load_alias=load_alias,
         title=title,
         description=description,
         const=const,
@@ -270,6 +296,14 @@ class ModelField(Representation):
         self.model_config.prepare_field(self)
         self.prepare()
 
+    @property
+    def dump_alias(self) -> str:
+        return self.field_info.dump_alias or self.alias
+
+    @property
+    def load_alias(self) -> str:
+        return self.field_info.load_alias or self.alias
+
     def get_default(self) -> Any:
         if self.default_factory is not None:
             value = self.default_factory()
@@ -309,7 +343,7 @@ class ModelField(Representation):
         return cls(
             name=name,
             type_=annotation,
-            alias=field_info.alias,
+            alias=field_info.load_alias,
             class_validators=class_validators,
             default=value,
             default_factory=field_info.default_factory,
@@ -323,11 +357,17 @@ class ModelField(Representation):
         info_from_config = config.get_field_info(self.name)
         config.prepare_field(self)
         new_alias = info_from_config.get('alias')
+        new_dump_alias = info_from_config.get('dump_alias')
+        new_load_alias = info_from_config.get('load_alias')
         new_alias_priority = info_from_config.get('alias_priority') or 0
         if new_alias and new_alias_priority >= (self.field_info.alias_priority or 0):
             self.field_info.alias = new_alias
             self.field_info.alias_priority = new_alias_priority
             self.alias = new_alias
+        if new_dump_alias:
+            self.field_info.dump_alias = new_dump_alias
+        if new_load_alias:
+            self.field_info.load_alias = new_load_alias
 
     @property
     def alt_alias(self) -> bool:

@@ -45,6 +45,8 @@ It has the following arguments:
     Among other purposes, this can be used to set dynamic default values.
     It is forbidden to set both `default` and `default_factory`.
 * `alias`: the public name of the field
+* `dump_alias`: only used for dumping (`.dict()` and `.json()`), takes precedence over `alias`.
+* `load_alias`: only used for loading, takes precedence over `alias`
 * `title`: if omitted, `field_name.title()` is used
 * `description`: if omitted and the annotation is a sub-model,
     the docstring of the sub-model will be used

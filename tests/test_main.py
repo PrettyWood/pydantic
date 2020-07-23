@@ -301,6 +301,60 @@ def test_alias():
     }
 
 
+def test_dump_alias():
+    class Model(BaseModel):
+        a: str = Field(..., dump_alias='dumpme')
+
+    assert Model(a='foobar').a == 'foobar'
+    assert Model(a='foobar').dict() == {'a': 'foobar'}
+    assert Model(a='foobar').dict(by_alias=True) == {'dumpme': 'foobar'}
+    assert Model(a='foobar').json(by_alias=True) == '{"dumpme": "foobar"}'
+
+
+def test_dump_alias_over_alias():
+    class Model(BaseModel):
+        a: str = Field(..., alias='pikalias', dump_alias='dumpme')
+
+    assert Model(pikalias='foobar').a == 'foobar'
+    assert Model(pikalias='foobar').dict() == {'a': 'foobar'}
+    assert Model(pikalias='foobar').dict(by_alias=True) == {'dumpme': 'foobar'}
+
+
+def test_dump_alias_over_alias_config():
+    class Model(BaseModel):
+        a: str
+
+        class Config:
+            fields = {'a': {'alias': 'pikalias', 'dump_alias': 'dumpme'}}
+
+    assert Model(pikalias='foobar').a == 'foobar'
+    assert Model(pikalias='foobar').dict() == {'a': 'foobar'}
+    assert Model(pikalias='foobar').dict(by_alias=True) == {'dumpme': 'foobar'}
+
+
+def test_load_alias():
+    class Model(BaseModel):
+        a: str = Field(..., alias='pikalias', load_alias='loadme')
+
+    assert Model(loadme='foobar').a == 'foobar'
+    assert Model(loadme='foobar').dict() == {'a': 'foobar'}
+    assert Model(loadme='foobar').dict(by_alias=True) == {'pikalias': 'foobar'}
+    assert Model(loadme='foobar').json(by_alias=True) == '{"pikalias": "foobar"}'
+
+
+def test_dump_load_alias():
+    class Model(BaseModel):
+        a: str
+
+        class Config:
+            fields = {'a': {'load_alias': 'loadme', 'dump_alias': 'dumpme'}}
+
+    assert Model(loadme='foobar').a == 'foobar'
+    assert Model(loadme='foobar').dict() == {'a': 'foobar'}
+    assert Model(loadme='foobar').dict(by_alias=True) == {'dumpme': 'foobar'}
+    assert Model(loadme='foobar').json(by_alias=True) == '{"dumpme": "foobar"}'
+
+
 def test_population_by_field_name():
     class Model(BaseModel):
         a: str
