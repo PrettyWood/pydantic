@@ -22,6 +22,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    Union,
 )
 from uuid import UUID
 
@@ -52,6 +53,7 @@ from pydantic import (
     StrictFloat,
     StrictInt,
     StrictStr,
+    StrictUnion,
     ValidationError,
     conbytes,
     condecimal,
@@ -2540,3 +2542,55 @@ def test_deque_json():
         v: Deque[int]
 
     assert Model(v=deque((1, 2, 3))).json() == '{"v": [1, 2, 3]}'
+
+
+def test_strict_union_one():
+    class PikaModel(BaseModel):
+        v: Union[int] = None
+        strict_v: StrictUnion[int] = None
+
+    assert PikaModel.__fields__['strict_v'].type_.__name__ == 'StrictUnion[int]'
+
+    pika = PikaModel(v='1')
+    assert pika.v == 1
+
+    with pytest.raises(ValidationError) as exc_info:
+        PikaModel(strict_v='1')
+    assert exc_info.value.errors() == [
+        {
+            'loc': ('strict_v',),
+            'msg': 'type of value is not allowed',
+            'type': 'type_error.strict_union',
+            'ctx': {'allowed_types': 'int'},
+        }
+    ]
+
+
+def test_strict_union_multi():
+    class PikaModel(BaseModel):
+        v1: Union[int, bool, str]
+        v2: Union[bool, int, str]
+        v3: Union[str, int, bool]
+        strict_v: StrictUnion[int, bool, str]
+
+    assert PikaModel.__fields__['strict_v'].type_.__name__ == 'StrictUnion[int, bool, str]'
+
+    pika = PikaModel(v1=1, v2=1, v3=1, strict_v=1)
+    assert pika.dict() == {'v1': 1, 'v2': True, 'v3': '1', 'strict_v': 1}
+
+    pika = PikaModel(v1=True, v2=True, v3=True, strict_v=True)
+    assert pika.dict() == {'v1': 1, 'v2': True, 'v3': 'True', 'strict_v': True}
+
+    pika = PikaModel(v1='1', v2='1', v3='1', strict_v='1')
+    assert pika.dict() == {'v1': 1, 'v2': True, 'v3': '1', 'strict_v': '1'}
+
+    with pytest.raises(ValidationError) as exc_info:
+        PikaModel(v1=b'1', v2=b'1', v3=b'1', strict_v=b'1')
+    assert exc_info.value.errors() == [
+        {
+            'loc': ('strict_v',),
+            'msg': 'type of value is not allowed',
+            'type': 'type_error.strict_union',
+            'ctx': {'allowed_types': 'int, bool, str'},
+        }
+    ]
