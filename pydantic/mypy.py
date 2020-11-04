@@ -34,7 +34,14 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.plugin import CheckerPluginInterface, ClassDefContext, MethodContext, Plugin, SemanticAnalyzerPluginInterface
+from mypy.plugin import (
+    AnalyzeTypeContext,
+    CheckerPluginInterface,
+    ClassDefContext,
+    MethodContext,
+    Plugin,
+    SemanticAnalyzerPluginInterface,
+)
 from mypy.plugins import dataclasses
 from mypy.semanal import set_callable_name  # type: ignore
 from mypy.server.trigger import make_wildcard_trigger
@@ -95,9 +102,20 @@ class PydanticPlugin(Plugin):
             return dataclasses.dataclass_class_maker_callback
         return None
 
+    def get_type_analyze_hook(self, fullname: str) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
+        if fullname == 'pydantic.types.StrictUnion':
+            return _convert_strict_union_type
+        return None
+
     def _pydantic_model_class_maker_callback(self, ctx: ClassDefContext) -> None:
         transformer = PydanticModelTransformer(ctx, self.plugin_config)
         transformer.transform()
+
+
+def _convert_strict_union_type(type_context: AnalyzeTypeContext) -> Type:
+    """Convert StrictUnion[...] type to Union[...]"""
+    union_mypy_types: Tuple[Type, ...] = type_context.type.args  # e.g. (int?, bool?, str?)
+    return UnionType(items=union_mypy_types, line=type_context.type.line, column=type_context.type.column)
 
 
 class PydanticPluginConfig:

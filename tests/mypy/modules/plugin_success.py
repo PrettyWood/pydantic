@@ -1,6 +1,6 @@
 from typing import ClassVar, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictUnion
 from pydantic.dataclasses import dataclass
 
 
@@ -133,3 +133,10 @@ class NestedModel(BaseModel):
 
 
 _ = NestedModel.Model
+
+
+class PikaModel(BaseModel):
+    x: StrictUnion[int, bool, str]
+
+
+pika = PikaModel(x=123)
