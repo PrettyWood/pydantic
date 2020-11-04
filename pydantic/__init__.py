@@ -95,6 +95,7 @@ __all__ = [
     'StrictBool',
     'StrictInt',
     'StrictFloat',
+    'StrictUnion',
     'PaymentCardNumber',
     'PrivateAttr',
     'ByteSize',

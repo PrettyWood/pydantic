@@ -94,6 +94,7 @@ __all__ = (
     'InvalidLengthForBrand',
     'InvalidByteSize',
     'InvalidByteSizeUnit',
+    'StrictUnionTypeError',
 )
 
 
@@ -575,3 +576,12 @@ class InvalidByteSize(PydanticValueError):
 
 class InvalidByteSizeUnit(PydanticValueError):
     msg_template = 'could not interpret byte unit: {unit}'
+
+
+class StrictUnionTypeError(PydanticTypeError):
+    code = 'strict_union'
+    msg_template = 'type of value is not allowed'
+
+    def __init__(self, *, allowed_types: Tuple[type, ...]) -> None:
+        allowed_types_str = ', '.join(display_as_type(t) for t in allowed_types)
+        super().__init__(allowed_types=allowed_types_str)

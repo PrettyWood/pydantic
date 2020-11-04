@@ -82,6 +82,7 @@ __all__ = [
     'StrictBool',
     'StrictInt',
     'StrictFloat',
+    'StrictUnion',
     'PaymentCardNumber',
     'ByteSize',
 ]
@@ -872,3 +873,31 @@ class ByteSize(int):
             raise errors.InvalidByteSizeUnit(unit=unit)
 
         return self / unit_div
+
+
+if TYPE_CHECKING:
+    StrictUnion = Union
+else:
+
+    class StrictUnionMeta(type):
+        def __getitem__(self, allowed_types: Union[type, Tuple[type, ...]]) -> Type['StrictUnion']:
+            if not isinstance(allowed_types, tuple):
+                allowed_types = (allowed_types,)
+            return type(
+                f"StrictUnion[{', '.join(t.__name__ for t in allowed_types)}]",
+                (StrictUnion,),
+                {'__allowed_types__': allowed_types},
+            )
+
+    class StrictUnion(metaclass=StrictUnionMeta):
+        __allowed_types__: Tuple[type, ...]
+
+        @classmethod
+        def __get_validators__(cls) -> 'CallableGenerator':
+            yield cls.validate
+
+        @classmethod
+        def validate(cls, value: T) -> T:
+            if not isinstance(value, cls.__allowed_types__):
+                raise errors.StrictUnionTypeError(allowed_types=cls.__allowed_types__)
+            return value
