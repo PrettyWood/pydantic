@@ -28,7 +28,7 @@ cases = [
     ('mypy-default.ini', 'fail2.py', 'fail2.txt'),
     ('mypy-default.ini', 'fail3.py', 'fail3.txt'),
     ('mypy-default.ini', 'fail4.py', 'fail4.txt'),
-    ('mypy-default.ini', 'plugin_success.py', 'plugin_success.txt'),
+    ('mypy-default.ini', 'plugin_success.py', 'no-plugin-fail.txt'),
 ]
 executable_modules = list({fname[:-3] for _, fname, out_fname in cases if out_fname is None})
 
