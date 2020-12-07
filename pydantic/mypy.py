@@ -113,7 +113,9 @@ class PydanticPlugin(Plugin):
 
 
 def _convert_strict_union_type(type_context: AnalyzeTypeContext) -> Type:
-    """Convert StrictUnion[...] type to Union[...]"""
+    """
+    Convert StrictUnion[...] type to Union[...]
+    """
     union_mypy_types: Tuple[Type, ...] = type_context.type.args  # e.g. (int?, bool?, str?)
     return UnionType(items=union_mypy_types, line=type_context.type.line, column=type_context.type.column)
 
