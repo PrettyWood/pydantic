@@ -1,4 +1,4 @@
 121: error: Unexpected keyword argument "name" for "AddProject"  [call-arg]
 121: error: Unexpected keyword argument "slug" for "AddProject"  [call-arg]
 121: error: Unexpected keyword argument "description" for "AddProject"  [call-arg]
-139: error: "StrictUnion" expects no type arguments, but 3 given  [type-arg]
+145: error: "StrictUnion" expects no type arguments, but 3 given  [type-arg]
