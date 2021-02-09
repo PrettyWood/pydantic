@@ -203,6 +203,7 @@ __all__ = (
     'resolve_annotations',
     'is_callable_type',
     'is_literal_type',
+    'all_literal_values',
     'literal_values',
     'is_namedtuple',
     'is_typeddict',
