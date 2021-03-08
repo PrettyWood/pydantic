@@ -521,34 +521,36 @@ def test_const_false():
 
 
 @pytest.mark.parametrize(
-    'field_type,expected_schema',
+    'field_type,extra_props',
     [
-        (tuple, {}),
+        (tuple, {'items': {}}),
         (
             Tuple[str, int, Union[str, int, float], float],
-            [
-                {'type': 'string'},
-                {'type': 'integer'},
-                {'anyOf': [{'type': 'string'}, {'type': 'integer'}, {'type': 'number'}]},
-                {'type': 'number'},
-            ],
+            {
+                'items': [
+                    {'type': 'string'},
+                    {'type': 'integer'},
+                    {'anyOf': [{'type': 'string'}, {'type': 'integer'}, {'type': 'number'}]},
+                    {'type': 'number'},
+                ],
+                'minItems': 4,
+                'maxItems': 4,
+            },
         ),
-        (Tuple[str], {'type': 'string'}),
+        (Tuple[str], {'items': {'type': 'string'}, 'minItems': 1, 'maxItems': 1}),
+        (Tuple[()], {'maxItems': 0, 'minItems': 0}),
     ],
 )
-def test_tuple(field_type, expected_schema):
+def test_tuple(field_type, extra_props):
     class Model(BaseModel):
         a: field_type
 
-    base_schema = {
+    assert Model.schema() == {
         'title': 'Model',
         'type': 'object',
-        'properties': {'a': {'title': 'A', 'type': 'array'}},
+        'properties': {'a': {'title': 'A', 'type': 'array', **extra_props}},
         'required': ['a'],
     }
-    base_schema['properties']['a']['items'] = expected_schema
-
-    assert Model.schema() == base_schema
 
 
 def test_bool():
@@ -1902,6 +1904,8 @@ def test_model_with_extra_forbidden():
                     {'exclusiveMinimum': 0, 'type': 'integer'},
                     {'exclusiveMinimum': 0, 'type': 'integer'},
                 ],
+                'minItems': 3,
+                'maxItems': 3,
             },
         ),
         (
