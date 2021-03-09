@@ -97,7 +97,7 @@ class ValidatedFunction:
             else:
                 annotation = type_hints[name]
 
-            default = ... if p.default == p.empty else p.default
+            default = ... if p.default is p.empty else p.default
             if p.kind == Parameter.POSITIONAL_ONLY:
                 self.arg_mapping[i] = name
                 fields[name] = annotation, default
