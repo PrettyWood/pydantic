@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Callable, ClassVar, Dict, Generic, List, Optional, Sequence, Tuple, Type, TypeVar, Union
 
 import pytest
+from typing_extensions import Literal
 
 from pydantic import BaseModel, Field, ValidationError, root_validator, validator
 from pydantic.generics import GenericModel, _generic_types_cache, iter_contained_typevars, replace_types
@@ -1015,3 +1016,58 @@ def test_generic_with_partial_callable():
     Model[str, U].__concrete__ is False
     Model[str, U].__parameters__ == [U]
     Model[str, int].__concrete__ is False
+
+
+@skip_36
+def test_generic_recursive_models(create_module):
+    @create_module
+    def module():
+        from typing import Generic, TypeVar, Union
+
+        from pydantic.generics import GenericModel
+
+        T = TypeVar('T')
+
+        class Model1(GenericModel, Generic[T]):
+            ref: 'Model2[T]'
+
+        class Model2(GenericModel, Generic[T]):
+            ref: Union[T, Model1[T]]
+
+        Model1.update_forward_refs()
+
+    Model1 = module.Model1
+    Model2 = module.Model2
+    result = Model1[str].parse_obj(dict(ref=dict(ref=dict(ref=dict(ref=123)))))
+    assert result == Model1(ref=Model2(ref=Model1(ref=Model2(ref='123'))))
+
+
+@skip_36
+def test_generic_enum():
+    T = TypeVar('T')
+
+    class SomeGenericModel(GenericModel, Generic[T]):
+        some_field: T
+
+    class SomeStringEnum(str, Enum):
+        A = 'A'
+        B = 'B'
+
+    class MyModel(BaseModel):
+        my_gen: SomeGenericModel[SomeStringEnum]
+
+    m = MyModel.parse_obj({'my_gen': {'some_field': 'A'}})
+    assert m.my_gen.some_field is SomeStringEnum.A
+
+
+@skip_36
+def test_generic_literal():
+    FieldType = TypeVar('FieldType')
+    ValueType = TypeVar('ValueType')
+
+    class GModel(GenericModel, Generic[FieldType, ValueType]):
+        field: Dict[FieldType, ValueType]
+
+    Fields = Literal['foo', 'bar']
+    m = GModel[Fields, str](field={'foo': 'x'})
+    assert m.dict() == {'field': {'foo': 'x'}}

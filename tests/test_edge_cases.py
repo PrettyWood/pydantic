@@ -19,7 +19,7 @@ from pydantic import (
     validate_model,
     validator,
 )
-from pydantic.fields import Field, Schema
+from pydantic.fields import Field
 
 try:
     import cython
@@ -203,12 +203,19 @@ def test_tuple_more():
         empty_tuple: Tuple[()]
         simple_tuple: tuple = None
         tuple_of_different_types: Tuple[int, float, str, bool] = None
+        tuple_of_single_tuples: Tuple[Tuple[int], ...] = ()
 
-    m = Model(empty_tuple=[], simple_tuple=[1, 2, 3, 4], tuple_of_different_types=[4, 3, 2, 1])
+    m = Model(
+        empty_tuple=[],
+        simple_tuple=[1, 2, 3, 4],
+        tuple_of_different_types=[4, 3, 2, 1],
+        tuple_of_single_tuples=(('1',), (2,)),
+    )
     assert m.dict() == {
         'empty_tuple': (),
         'simple_tuple': (1, 2, 3, 4),
         'tuple_of_different_types': (4, 3.0, '2', True),
+        'tuple_of_single_tuples': ((1,), (2,)),
     }
 
 
@@ -1107,16 +1114,6 @@ def test_nested_init(model):
     assert m.nest.modified_number == 1
 
 
-def test_values_attr_deprecation():
-    class Model(BaseModel):
-        foo: int
-        bar: str
-
-    m = Model(foo=4, bar='baz')
-    with pytest.warns(DeprecationWarning, match='`__values__` attribute is deprecated, use `__dict__` instead'):
-        assert m.__values__ == m.__dict__
-
-
 def test_init_inspection():
     class Foobar(BaseModel):
         x: int
@@ -1217,25 +1214,6 @@ def test_not_optional_subfields():
     assert Model().a is None
     assert Model(a=None).a is None
     assert Model(a=12).a == 12
-
-
-def test_scheme_deprecated():
-
-    with pytest.warns(DeprecationWarning, match='`Schema` is deprecated, use `Field` instead'):
-
-        class Model(BaseModel):
-            foo: int = Schema(4)
-
-
-def test_fields_deprecated():
-    class Model(BaseModel):
-        v: str = 'x'
-
-    with pytest.warns(DeprecationWarning, match='`fields` attribute is deprecated, use `__fields__` instead'):
-        assert Model().fields.keys() == {'v'}
-
-    assert Model().__fields__.keys() == {'v'}
-    assert Model.__fields__.keys() == {'v'}
 
 
 def test_optional_field_constraints():
@@ -1793,3 +1771,71 @@ class User(BaseModel):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.User(id=12).dict() == {'id': 12, 'name': 'Jane Doe'}
+
+
+def test_iter_coverage():
+    class MyModel(BaseModel):
+        x: int = 1
+        y: str = 'a'
+
+    assert list(MyModel()._iter(by_alias=True)) == [('x', 1), ('y', 'a')]
+
+
+def test_config_field_info():
+    class Foo(BaseModel):
+        a: str = Field(...)
+
+        class Config:
+            fields = {'a': {'description': 'descr'}}
+
+    assert Foo.schema(by_alias=True)['properties'] == {'a': {'title': 'A', 'description': 'descr', 'type': 'string'}}
+
+
+def test_config_field_info_alias():
+    class Foo(BaseModel):
+        a: str = Field(...)
+
+        class Config:
+            fields = {'a': {'alias': 'b'}}
+
+    assert Foo.schema(by_alias=True)['properties'] == {'b': {'title': 'B', 'type': 'string'}}
+
+
+def test_config_field_info_merge():
+    class Foo(BaseModel):
+        a: str = Field(..., foo='Foo')
+
+        class Config:
+            fields = {'a': {'bar': 'Bar'}}
+
+    assert Foo.schema(by_alias=True)['properties'] == {
+        'a': {'bar': 'Bar', 'foo': 'Foo', 'title': 'A', 'type': 'string'}
+    }
+
+
+def test_config_field_info_allow_mutation():
+    class Foo(BaseModel):
+        a: str = Field(...)
+
+        class Config:
+            validate_assignment = True
+
+    assert Foo.__fields__['a'].field_info.allow_mutation is True
+
+    f = Foo(a='x')
+    f.a = 'y'
+    assert f.dict() == {'a': 'y'}
+
+    class Bar(BaseModel):
+        a: str = Field(...)
+
+        class Config:
+            fields = {'a': {'allow_mutation': False}}
+            validate_assignment = True
+
+    assert Bar.__fields__['a'].field_info.allow_mutation is False
+
+    b = Bar(a='x')
+    with pytest.raises(TypeError):
+        b.a = 'y'
+    assert b.dict() == {'a': 'x'}
